@@ -1,4 +1,4 @@
-# multi-cluster-mcp
+# kube-mcp
 
 A Model Context Protocol (MCP) server that lets AI assistants (Claude, VS Code extension, etc.) query **multiple Kubernetes clusters** simultaneously using natural language.
 
