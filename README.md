@@ -4,6 +4,8 @@ A Model Context Protocol (MCP) server that lets AI assistants (Claude, VS Code e
 
 Each cluster runs a lightweight agent that connects back to a central MCP server. The AI talks to the central server and commands are routed to the right cluster transparently.
 
+![Claude querying multiple Kubernetes clusters via MCP](showcase_claude.png)
+
 ## Architecture
 
 ```
