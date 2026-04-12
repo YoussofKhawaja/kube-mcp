@@ -1,0 +1,83 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/your-org/multi-cluster-mcp/central-server
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+    # nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    # nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    # nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+  hosts:
+    - host: mcp.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: mcp-tls
+  #    hosts:
+  #      - mcp.example.com
+
+config:
+  # Per-cluster tokens — each cluster agent must have its own unique token.
+  # Generate per token: openssl rand -hex 32
+  # Example:
+  #   clusterTokens:
+  #     prod-us-east: "a3f8c2d1e4b5..."
+  #     staging-eu:   "f9e2b7c4d1a3..."
+  clusterTokens: {}
+
+  # Optional API key for MCP clients (Claude Desktop, VS Code, claude.ai).
+  # If empty, the MCP endpoint is open to anyone who can reach it.
+  mcpApiKey: ""
+
+  # If set, use this existing Secret instead of creating one.
+  # Must have keys: CLUSTER_TOKENS (JSON), and optionally MCP_API_KEY.
+  existingSecret: ""
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

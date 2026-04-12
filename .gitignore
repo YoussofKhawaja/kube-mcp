@@ -1,0 +1,8 @@
+node_modules/
+.mcp.json
+dist/
+*.js.map
+.env
+.env.*
+!.env.example
+*.tsbuildinfo

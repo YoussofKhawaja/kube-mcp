@@ -1,0 +1,45 @@
+multi-cluster-mcp Central Server deployed!
+
+MCP endpoint (for Claude / VS Code extension):
+{{- if .Values.ingress.enabled }}
+  https://{{ (index .Values.ingress.hosts 0).host }}/mcp
+{{- else }}
+  kubectl port-forward svc/{{ include "central-server.fullname" . }} 3000:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+  http://localhost:3000/mcp
+{{- end }}
+
+Agent WebSocket endpoint (used by cluster-agent):
+{{- if .Values.ingress.enabled }}
+  wss://{{ (index .Values.ingress.hosts 0).host }}/agent
+{{- else }}
+  ws://localhost:3000/agent  (after port-forward above)
+{{- end }}
+
+Next steps:
+  1. Generate a token for each cluster agent:
+       openssl rand -hex 32
+
+  2. Add each cluster token to your values (or an existing Secret):
+       config:
+         clusterTokens:
+           my-cluster: "<token>"
+
+  3. Install the cluster-agent Helm chart in each target cluster:
+       helm install cluster-agent ./helm/cluster-agent \
+         --set config.centralServerUrl=wss://<your-host>/agent \
+         --set config.clusterName=my-cluster \
+         --set config.agentToken=<token>
+
+  4. Confirm the agent appears in Claude with:
+       list_clusters
+
+  5. Configure your MCP client (.mcp.json or Claude Desktop):
+       {
+         "mcpServers": {
+           "multi-cluster-k8s": {
+             "type": "http",
+             "url": "https://<your-host>/mcp",
+             "headers": { "X-Api-Key": "<MCP_API_KEY>" }
+           }
+         }
+       }

@@ -1,0 +1,18 @@
+multi-cluster-mcp Cluster Agent deployed!
+
+Cluster "{{ .Values.config.clusterName }}" will connect to:
+  {{ .Values.config.centralServerUrl }}
+
+Check agent logs:
+  kubectl logs -l app.kubernetes.io/name=cluster-agent -n {{ .Release.Namespace }} -f
+
+Check readiness (agent connected to central server):
+  kubectl get deployment {{ include "cluster-agent.fullname" . }} -n {{ .Release.Namespace }}
+
+The agent runs a preflight check on startup to verify kubectl and helm are available,
+then registers with the central server. Once registered it will appear in list_clusters.
+
+Troubleshooting:
+  - If the pod is Ready but not appearing: check CENTRAL_SERVER_URL and AGENT_TOKEN values.
+  - If the pod is not Ready: check logs for preflight failures or TLS errors.
+  - To test connectivity: kubectl exec -it <pod> -- wget -qO- http://localhost:8080/health

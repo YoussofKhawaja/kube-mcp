@@ -1,0 +1,46 @@
+image:
+  repository: ghcr.io/your-org/multi-cluster-mcp/cluster-agent
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+config:
+  # WebSocket URL of the central server. Use wss:// in production.
+  centralServerUrl: ""
+  # Human-readable name for this cluster (shown in list_clusters).
+  clusterName: ""
+  # Must match the token value for this cluster in CLUSTER_TOKENS on the central server.
+  agentToken: ""
+  # If set, use this existing Secret instead of creating one.
+  # Must have keys: CENTRAL_SERVER_URL, CLUSTER_NAME, AGENT_TOKEN
+  existingSecret: ""
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

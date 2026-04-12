@@ -1,0 +1,12 @@
+apiVersion: v2
+name: cluster-agent
+description: Multi-cluster MCP cluster agent — connects to the central server and provides read-only kubectl access via the in-cluster service account.
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - mcp
+  - kubernetes
+  - multi-cluster
+maintainers:
+  - name: multi-cluster-mcp

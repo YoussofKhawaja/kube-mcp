@@ -1,0 +1,17 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "cluster-agent.fullname" . }}
+  labels:
+    {{- include "cluster-agent.labels" . | nindent 4 }}
+rules:
+  # Full read access to all API resources across all groups.
+  # The executor enforces read-only verbs in code — this RBAC is the hard boundary
+  # that ensures even a compromised agent binary cannot mutate cluster state.
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+
+  # Non-resource URLs (e.g. /healthz, /version, /metrics)
+  - nonResourceURLs: ["*"]
+    verbs: ["get"]

@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "central-server Helm chart values",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "replicaCount": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "image": {
+      "type": "object",
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "tag":        { "type": "string", "minLength": 1 },
+        "pullPolicy": {
+          "type": "string",
+          "enum": ["Always", "IfNotPresent", "Never"]
+        }
+      },
+      "required": ["repository", "tag", "pullPolicy"]
+    },
+    "service": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["ClusterIP", "NodePort", "LoadBalancer"]
+        },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "properties": {
+        "enabled":   { "type": "boolean" },
+        "className": { "type": "string" },
+        "annotations": { "type": "object" },
+        "hosts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "host": { "type": "string" },
+              "paths": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": { "type": "string" },
+                    "pathType": {
+                      "type": "string",
+                      "enum": ["Prefix", "Exact", "ImplementationSpecific"]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tls": { "type": "array" }
+      }
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "clusterTokens": {
+          "type": "object",
+          "description": "Map of clusterName → token. Each token must be at least 32 hex characters.",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 32,
+            "pattern": "^[a-fA-F0-9]+$"
+          }
+        },
+        "mcpApiKey": {
+          "type": "string",
+          "description": "API key for MCP clients. Leave empty to allow unauthenticated access."
+        },
+        "existingSecret": {
+          "type": "string",
+          "description": "Name of an existing Secret to use instead of generating one."
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "properties": {
+        "limits":   { "type": "object" },
+        "requests": { "type": "object" }
+      }
+    },
+    "autoscaling": {
+      "type": "object",
+      "properties": {
+        "enabled":                        { "type": "boolean" },
+        "minReplicas":                    { "type": "integer", "minimum": 1 },
+        "maxReplicas":                    { "type": "integer", "minimum": 1 },
+        "targetCPUUtilizationPercentage": { "type": "integer", "minimum": 1, "maximum": 100 }
+      }
+    },
+    "serviceAccount": {
+      "type": "object",
+      "properties": {
+        "create":      { "type": "boolean" },
+        "name":        { "type": "string" },
+        "annotations": { "type": "object" }
+      }
+    },
+    "podAnnotations":    { "type": "object" },
+    "podSecurityContext": { "type": "object" },
+    "securityContext":   { "type": "object" },
+    "nodeSelector":      { "type": "object" },
+    "tolerations":       { "type": "array" },
+    "affinity":          { "type": "object" }
+  }
+}

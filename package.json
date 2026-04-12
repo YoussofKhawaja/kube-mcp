@@ -1,0 +1,13 @@
+{
+  "name": "multi-cluster-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "dev:server": "npm run dev --workspace=packages/central-server",
+    "dev:agent": "npm run dev --workspace=packages/cluster-agent"
+  }
+}

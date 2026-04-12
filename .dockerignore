@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build artifacts
+dist/
+**/dist/
+*.tsbuildinfo
+
+# Version control
+.git/
+.gitignore
+
+# Helm charts (not needed in Docker build context)
+helm/
+
+# Local config / secrets
+.mcp.json
+.env
+*.env
+
+# Logs
+*.log
+logs/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
