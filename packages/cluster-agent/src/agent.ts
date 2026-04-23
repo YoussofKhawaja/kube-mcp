@@ -9,12 +9,19 @@ import type { ToolVersions } from './preflight.js';
 const AGENT_VERSION = '1.0.0';
 const INITIAL_RECONNECT_MS = 5_000;
 const MAX_RECONNECT_MS = 60_000;
+/**
+ * If no message arrives from the server within this window, assume the TCP
+ * connection is half-open (dropped by a middlebox without FIN) and force a
+ * reconnect. Must exceed the server's ping interval (30s) with margin.
+ */
+const SERVER_SILENCE_TIMEOUT_MS = 90_000;
 
 export class Agent {
   private ws: WebSocket | null = null;
   private reconnectDelay = INITIAL_RECONNECT_MS;
   private shouldReconnect = true;
   private readonly toolVersions: ToolVersions;
+  private silenceWatchdog: NodeJS.Timeout | null = null;
 
   constructor(toolVersions: ToolVersions) {
     this.toolVersions = toolVersions;
@@ -37,11 +44,13 @@ export class Agent {
 
     this.ws.on('open', () => {
       this.reconnectDelay = INITIAL_RECONNECT_MS;
+      this.resetSilenceWatchdog();
       this.send({ type: 'register', clusterName: config.clusterName, version: AGENT_VERSION, kubectlVersion: this.toolVersions.kubectl, helmVersion: this.toolVersions.helm });
       logger.info({ cluster: config.clusterName }, 'Connected to central server — registering');
     });
 
     this.ws.on('message', async (raw) => {
+      this.resetSilenceWatchdog();
       let msg: ServerMessage;
       try {
         msg = JSON.parse(raw.toString()) as ServerMessage;
@@ -53,6 +62,7 @@ export class Agent {
     });
 
     this.ws.on('close', (code, reason) => {
+      this.clearSilenceWatchdog();
       this.ws = null;
       health.connected = false;
       if (!this.shouldReconnect) return;
@@ -70,7 +80,26 @@ export class Agent {
   stop(): void {
     this.shouldReconnect = false;
     health.connected = false;
+    this.clearSilenceWatchdog();
     this.ws?.close(1000, 'Agent stopping');
+  }
+
+  private resetSilenceWatchdog(): void {
+    this.clearSilenceWatchdog();
+    this.silenceWatchdog = setTimeout(() => {
+      logger.warn(
+        { timeoutMs: SERVER_SILENCE_TIMEOUT_MS },
+        'No message from server within watchdog window — terminating stale connection',
+      );
+      this.ws?.terminate();
+    }, SERVER_SILENCE_TIMEOUT_MS);
+  }
+
+  private clearSilenceWatchdog(): void {
+    if (this.silenceWatchdog) {
+      clearTimeout(this.silenceWatchdog);
+      this.silenceWatchdog = null;
+    }
   }
 
   private send(msg: AgentMessage): void {

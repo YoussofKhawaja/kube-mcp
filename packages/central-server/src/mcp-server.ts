@@ -100,14 +100,22 @@ function buildMcpServer(agentManager: AgentManager): McpServer {
     'list_clusters',
     {
       description: 'List all Kubernetes clusters currently connected to this MCP server.',
+      inputSchema: {},
     },
     async () => {
-      const clusters = agentManager.list();
-      if (clusters.length === 0) return toolText('No clusters are currently connected.');
-      const lines = clusters.map(
-        (c) => `  • ${c.name}  agent=${c.version}  kubectl=${c.kubectlVersion}  helm=${c.helmVersion}  connected=${c.connectedAt.toISOString()}  last-seen=${c.lastSeen.toISOString()}`,
-      );
-      return toolText(`Connected clusters (${clusters.length}):\n${lines.join('\n')}`);
+      try {
+        const clusters = agentManager.list();
+        if (clusters.length === 0) return toolText('No clusters are currently connected.');
+        const lines = clusters.map((c) => {
+          const connectedAt = c.connectedAt instanceof Date ? c.connectedAt.toISOString() : String(c.connectedAt);
+          const lastSeen = c.lastSeen instanceof Date ? c.lastSeen.toISOString() : String(c.lastSeen);
+          return `  • ${c.name}  agent=${c.version}  kubectl=${c.kubectlVersion}  helm=${c.helmVersion}  connected=${connectedAt}  last-seen=${lastSeen}`;
+        });
+        return toolText(`Connected clusters (${clusters.length}):\n${lines.join('\n')}`);
+      } catch (e: unknown) {
+        logger.error({ err: e instanceof Error ? e.message : String(e) }, 'list_clusters handler failed');
+        return toolError(e instanceof Error ? e.message : String(e));
+      }
     },
   );
 

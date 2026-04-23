@@ -5,6 +5,8 @@ import type { ServerMessage, CommandMessage, ClusterInfo } from './types.js';
 
 const COMMAND_TIMEOUT_MS = 60_000;
 const PING_INTERVAL_MS = 30_000;
+/** If no pong is received within this window the link is treated as dead. */
+const PONG_TIMEOUT_MS = 75_000;
 
 interface PendingCommand {
   resolve: (data: string) => void;
@@ -24,16 +26,27 @@ export class AgentConnection {
 
   private pending = new Map<string, PendingCommand>();
   private pingInterval: NodeJS.Timeout;
+  private lastPongAt: number;
 
   constructor(ws: WebSocket, info: ClusterInfo) {
     this.id = randomUUID();
     this.ws = ws;
     this.info = info;
+    this.lastPongAt = Date.now();
     this.pingInterval = setInterval(() => this.ping(), PING_INTERVAL_MS);
   }
 
   private ping(): void {
-    if (this.ws.readyState === WebSocket.OPEN) this.send({ type: 'ping' });
+    if (this.ws.readyState !== WebSocket.OPEN) return;
+    if (Date.now() - this.lastPongAt > PONG_TIMEOUT_MS) {
+      logger.warn(
+        { cluster: this.info.name, sinceLastPongMs: Date.now() - this.lastPongAt },
+        'No pong within timeout — terminating stale connection',
+      );
+      this.ws.terminate();
+      return;
+    }
+    this.send({ type: 'ping' });
   }
 
   send(msg: ServerMessage): void {
@@ -42,6 +55,7 @@ export class AgentConnection {
 
   handlePong(): void {
     this.info.lastSeen = new Date();
+    this.lastPongAt = Date.now();
   }
 
   handleResponse(requestId: string, success: boolean, data?: string, error?: string): void {
