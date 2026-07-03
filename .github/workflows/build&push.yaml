@@ -24,7 +24,6 @@ jobs:
       image_name: multi-cluster-mcp/central-server
       context: .
       dockerfile: packages/central-server/Dockerfile
-      registry: ${{ secrets.REGISTRY_HOST }}
     secrets:
       REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
       REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
@@ -36,7 +35,6 @@ jobs:
       image_name: multi-cluster-mcp/cluster-agent
       context: .
       dockerfile: packages/cluster-agent/Dockerfile
-      registry: ${{ secrets.REGISTRY_HOST }}
     secrets:
       REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
       REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
