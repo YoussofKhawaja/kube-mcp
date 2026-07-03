@@ -1,0 +1,102 @@
+name: Build and Push
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/build&push.yaml"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - "packages/**"
+  workflow_dispatch:
+
+concurrency:
+  group: kube-mcp-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  docker_central_server:
+    name: Build central-server image
+    uses: youssofkhawaja/pipelines/.github/workflows/docker-build-push.yml@main
+    with:
+      image_name: multi-cluster-mcp/central-server
+      context: .
+      dockerfile: packages/central-server/Dockerfile
+      registry: ${{ secrets.REGISTRY_HOST }}
+    secrets:
+      REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+
+  docker_cluster_agent:
+    name: Build cluster-agent image
+    uses: youssofkhawaja/pipelines/.github/workflows/docker-build-push.yml@main
+    with:
+      image_name: multi-cluster-mcp/cluster-agent
+      context: .
+      dockerfile: packages/cluster-agent/Dockerfile
+      registry: ${{ secrets.REGISTRY_HOST }}
+    secrets:
+      REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+
+  update_gitops:
+    name: Update platform-gitops image tags
+    runs-on: ubuntu-latest
+    needs:
+      - docker_central_server
+      - docker_cluster_agent
+
+    steps:
+      - name: Checkout GitOps repo
+        uses: actions/checkout@v4
+        with:
+          repository: youssofkhawaja/platform-gitops
+          ref: main
+          token: ${{ secrets.GITOPS_PAT }}
+          path: gitops
+
+      - name: Install yq
+        shell: bash
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+          yq --version
+
+      - name: Update Argo CD image tags
+        shell: bash
+        env:
+          CENTRAL_SERVER_TAG: ${{ needs.docker_central_server.outputs.tag }}
+          CLUSTER_AGENT_TAG: ${{ needs.docker_cluster_agent.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          CENTRAL_APP="gitops/bootstrap/apps/central-server.yaml"
+          CLUSTER_AGENT_APP="gitops/bootstrap/apps/cluster-agent.yaml"
+
+          : "${CENTRAL_SERVER_TAG:?central-server image tag output is empty}"
+          : "${CLUSTER_AGENT_TAG:?cluster-agent image tag output is empty}"
+
+          yq -i '.spec.source.helm.values = (.spec.source.helm.values | from_yaml | .image.tag = strenv(CENTRAL_SERVER_TAG) | to_yaml)' "$CENTRAL_APP"
+          yq -i '.spec.source.helm.values = (.spec.source.helm.values | from_yaml | .image.tag = strenv(CLUSTER_AGENT_TAG) | to_yaml)' "$CLUSTER_AGENT_APP"
+
+          echo "central-server -> ${CENTRAL_SERVER_TAG}"
+          echo "cluster-agent  -> ${CLUSTER_AGENT_TAG}"
+          yq '.spec.source.helm.values | from_yaml | .image' "$CENTRAL_APP"
+          yq '.spec.source.helm.values | from_yaml | .image' "$CLUSTER_AGENT_APP"
+
+      - name: Commit and push GitOps changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cd gitops
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add bootstrap/apps/central-server.yaml bootstrap/apps/cluster-agent.yaml
+          git diff --cached --quiet && echo "No GitOps tag changes to commit" && exit 0
+
+          git commit -m "Update kube-mcp image tags"
+          git push origin main
